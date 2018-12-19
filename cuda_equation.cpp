@@ -10,10 +10,10 @@ void Equation::init() {
   jc = N / node.PhysSize.y;
   kc = N / node.PhysSize.z;
 
-  // hx = Lx / ic;
-  // hy = Ly / jc;
-  // hz = Lz / kc;
-  // ht = T / K;
+  hx = Lx / ic;
+  hy = Ly / jc;
+  hz = Lz / kc;
+  ht = T / K;
 
   if (node.x < N % node.PhysSize.x)
     ++ic;

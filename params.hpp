@@ -36,10 +36,10 @@ enum ExchangeDir {
   period_minus_z
 };
 
-// extern double T;  // = 0.01;
-// extern double Lx; // = M_PI;
-// extern double Ly; // = M_PI;
-// extern double Lz; // = M_PI;
+extern double T;  // = 0.01;
+extern double Lx; // = M_PI;
+extern double Ly; // = M_PI;
+extern double Lz; // = M_PI;
 extern int K;  // = 20;
 
 ExchangeDir pairDir(ExchangeDir cdir);

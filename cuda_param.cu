@@ -318,6 +318,9 @@ struct calculateIndex_functor
 	float operator()(long offset)
 	{
 		i_j_k index(offset);
+		if (idx.i > 1&& idx.i < ic - 2 && 
+			idx.j > 1 && idx.j < jc - 2 && 
+			idx.k > 1 && idx.k < kc - 2)
 		return calculateIndex(index.i, index.j, index.k, arrayCurr, arrayPrev);
 	}
 };
@@ -336,9 +339,9 @@ struct calculateIndexDir_functor
 	float operator()(long offset)
 	{
 		i_j_k idx(offset);
-		if (idx.i == 0 || idx.i == ic - 1 || 
-			idx.j == 0 || idx.j == jc - 1 || 
-			idx.k == 0 || idx.k == kc - 1)
+		if (idx.i == 1 || idx.i == ic - 2 || 
+			idx.j == 1 || idx.j == jc - 2 || 
+			idx.k == 1 || idx.k == kc - 2)
 			return calculateIndex(idx.i, idx.j, idx.k, arrayCurr, arrayPrev);
 	}
 };
@@ -486,7 +489,7 @@ struct edgeZ_recv_functor
 
 
 void cuda_edgeX(ExchangeDir cdir, dvector &v, uint id, bool recv, 
-				dvector d_arrayNext, dvector d_arrayCurr) 
+				dvector &d_arrayNext, dvector &d_arrayCurr) 
 {
   // ExchangeDir cdir = requests.iv[id];
   // dvector &v = requests.device[id];
@@ -534,7 +537,7 @@ void cuda_edgeX(ExchangeDir cdir, dvector &v, uint id, bool recv,
 }
 
 void cuda_edgeY(ExchangeDir cdir, dvector &v, uint id, bool recv, 
-				dvector d_arrayNext, dvector d_arrayCurr) {
+				dvector &d_arrayNext, dvector &d_arrayCurr) {
   // ExchangeDir cdir = requests.iv[id];
   // thrust::host_vector<float> &v = requests.host[id];
   int j;
@@ -548,19 +551,6 @@ void cuda_edgeY(ExchangeDir cdir, dvector &v, uint id, bool recv,
     break;
   }
   }
-
-  // for (uint i = 0; i < ic; ++i) {
-  //   for (uint k = 0; k < kc; ++k) {
-  //     inRange(offset, 0, v.size());
-  //     inRange(index(i, j, k), 0, d_arrayCurr.size());
-  //     if (!recv)
-  //       v[offset++] =d_arrayCurr[index(i, j, k)];
-  //     // copy_send(v, arrayCurr, i, j, k, offset++);
-  //     else
-  //       d_arrayCurr[index(i, j, k)] = v[offset++];
-  //     // copy_recv(v, arrayCurr, i, j, k, offset++);
-  //   }
-  // }
 
   thrust::counting_iterator<int> it;
 
@@ -577,7 +567,7 @@ void cuda_edgeY(ExchangeDir cdir, dvector &v, uint id, bool recv,
 }
 
 void cuda_edgeZ(ExchangeDir cdir, dvector &v, uint id, bool recv, 
-				dvector d_arrayNext, dvector d_arrayCurr) {
+				dvector &d_arrayNext, dvector &d_arrayCurr) {
   // ExchangeDir cdir = requests.iv[id];
   // std::vector<float> &v = requests.host[id];
   int k;
