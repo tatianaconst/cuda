@@ -5,10 +5,15 @@ ProcessorNode node;
 
 Equation::Equation(uint n) : N(n), curr_step(0) {}
 
+
+
 void Equation::init() {
   ic = N / node.PhysSize.x;
   jc = N / node.PhysSize.y;
   kc = N / node.PhysSize.z;
+
+  K = 20;
+  T = 0.01;
 
   hx = Lx / ic;
   hy = Ly / jc;
@@ -22,8 +27,19 @@ void Equation::init() {
   if (node.z < N % node.PhysSize.z)
     ++kc;
 
+  int it = N % node.PhysSize.x;
+  int jt = N % node.PhysSize.y;
+  int kt = N % node.PhysSize.z;
+
+  i0 = std::min(node.x, it) * (ic + 1) + std::max(node.x - it, 0) * ic;
+  j0 = std::min(node.y, jt) * (jc + 1) + std::max(node.y - jt, 0) * jc;
+  k0 = std::min(node.z, kt) * (kc + 1) + std::max(node.z - kt, 0) * kc;
+
   incsize = (ic + 2) * (jc + 2) * (kc + 2);
-  cuda_init(d_arrayPrev, d_arrayCurr, d_arrayNext, incsize);
+  cuda_init(d_arrayPrev, d_arrayCurr, d_arrayNext, incsize, 
+            ic, jc, kc,
+            i0, j0, k0,
+            hx, hy, hz, ht);
 
   for (int i = 0; i < 10; ++i) {
     ExchangeDir cdir = static_cast<ExchangeDir>(i);
@@ -43,9 +59,10 @@ void Equation::init() {
 }
 
 void Equation::run() {
+  std::cout << "1";
   cuda_initPrev(d_arrayPrev);
   d_arrayNext = d_arrayPrev;
-
+  std::cout << "2";
   cuda_initCurr(d_arrayPrev, d_arrayCurr);
   uint curr_step = 2;
 
@@ -66,20 +83,21 @@ void Equation::run() {
                 MPI_FLOAT, node.neighbor(send_requests.iv[i]),
                 send_requests.iv[i], MPI_COMM_WORLD, &send_requests.v[i]);
     }
-
+    std::cout << "3";
     cuda_calculateIndex(d_arrayNext, d_arrayCurr, d_arrayPrev);
-
+    std::cout << "3/1";
     MPI_Waitall(recv_requests.v.size(), recv_requests.v.data(),
                 MPI_STATUSES_IGNORE);
+    std::cout << "3/2";
     for (uint i = 0; i < recv_requests.size(); ++i)
       copy(recv_requests, i, true);
-
+    std::cout << "3/3";
     recv_requests.cpu_to_gpu();
-
+    std::cout << "4";
     cuda_calculateDir(d_arrayNext, d_arrayCurr, d_arrayPrev);
     
     send_requests.gpu_to_cpu();
-
+    std::cout << "5";
     totalSumRes += cuda_residual(curr_step, d_arrayNext);
 
     if (curr_step < K)
@@ -94,114 +112,6 @@ void Equation::run() {
     printf("Np: %d, N: %ld, R: %lf\n", node.size, N, sharedResidual);
 }
 
-
-
-
-
-
-
-// void Equation::edgeX(ProcessorNode::Requests &requests, uint id, bool recv) {
-//   ExchangeDir cdir = requests.iv[id];
-//   thrust::host_vector<float> &v = requests.host[id];
-//   uint offset = 0;
-//   int i;
-//   switch (cdir) {
-//   case plus_x: {
-//     i = recv ? ic : ic - 1;
-//     break;
-//   }
-//   case minus_x: {
-//     i = recv ? -1 : 0;
-//     break;
-//   }
-//   case period_plus_x: {
-//     i = recv ? ic : ic - 1;
-//     break;
-//   }
-//   case period_minus_x: {
-//     i = recv ? 0 : 1;
-//     break;
-//   }
-//   }
-//   thrust::host_vector<float> &a =
-//       (((cdir == period_minus_x) && recv) ? d_arrayNext : d_arrayCurr);
-//   for (uint j = 0; j < jc; ++j) {
-//     for (uint k = 0; k < kc; ++k) {
-//       if (!recv)
-//         v[offset++] = d_arrayCurr[index(i, j, k)];
-//       else
-//         d_arrayCurr[index(i, j, k)] = v[offset++];
-//     }
-//   }
-// }
-
-// void Equation::edgeY(ProcessorNode::Requests &requests, uint id, bool recv) {
-//   ExchangeDir cdir = requests.iv[id];
-//   thrust::host_vector<float> &v = requests.host[id];
-//   uint offset = 0;
-//   int j;
-//   switch (cdir) {
-//   case plus_y: {
-//     j = recv ? jc : jc - 1;
-//     break;
-//   }
-//   case minus_y: {
-//     j = recv ? -1 : 0;
-//     break;
-//   }
-//   }
-
-//   for (uint i = 0; i < ic; ++i) {
-//     for (uint k = 0; k < kc; ++k) {
-//       inRange(offset, 0, v.size());
-//       inRange(index(i, j, k), 0, d_arrayCurr.size());
-//       if (!recv)
-//         v[offset++] =d_arrayCurr[index(i, j, k)];
-//       // copy_send(v, arrayCurr, i, j, k, offset++);
-//       else
-//         d_arrayCurr[index(i, j, k)] = v[offset++];
-//       // copy_recv(v, arrayCurr, i, j, k, offset++);
-//     }
-//   }
-// }
-
-// void Equation::edgeZ(ProcessorNode::Requests &requests, uint id, bool recv) {
-//   ExchangeDir cdir = requests.iv[id];
-//   std::vector<float> &v = requests.host[id];
-//   uint offset = 0;
-//   int k;
-//   switch (cdir) {
-//   case plus_z: {
-//     k = recv ? kc : kc - 1;
-//     break;
-//   }
-//   case minus_z: {
-//     k = recv ? -1 : 0;
-//     break;
-//   }
-//   case period_plus_z: {
-//     k = recv ? kc : kc - 1;
-//     break;
-//   }
-//   case period_minus_z: {
-//     k = recv ? 0 : 1;
-//     break;
-//   }
-//   }
-//   std::vector<float> &a =
-//       (((cdir == period_minus_z) && recv) ? arrayNext : arrayCurr);
-//   for (uint i = 0; i < ic; ++i) {
-//     for (uint j = 0; j < jc; ++j) {
-//       inRange(offset, 0, v.size());
-//       inRange(index(i, j, k), 0, arrayCurr.size());
-//       if (!recv)
-//         v[offset++] = arrayCurr[index(i, j, k)];
-//       else
-//         arrayCurr[index(i, j, k)] = v[offset++];
-//     }
-//   }
-// }
-
 void Equation::copy(ProcessorNode::Requests &requests, uint id, bool recv) {
   inRange(id, 0, requests.iv.size());
 
@@ -211,65 +121,25 @@ void Equation::copy(ProcessorNode::Requests &requests, uint id, bool recv) {
   case minus_x:
   case period_plus_x:
   case period_minus_x: {
-    cuda_edgeX(requests.iv[id], requests.device[id], id, recv, d_arrayNext, d_arrayCurr);
+    cuda_edgeX(requests.iv[id], requests.device[id], id, recv, d_arrayNext, d_arrayCurr, ic, jc, kc);
     break;
   }
   case plus_y:
   case minus_y: {
-    cuda_edgeY(requests.iv[id], requests.device[id], id, recv, d_arrayNext, d_arrayCurr);
+    cuda_edgeY(requests.iv[id], requests.device[id], id, recv, d_arrayNext, d_arrayCurr, jc);
     break;
   }
   case plus_z:
   case minus_z:
   case period_plus_z:
   case period_minus_z: {
-    cuda_edgeZ(requests.iv[id], requests.device[id], id, recv, d_arrayNext, d_arrayCurr);
+    cuda_edgeZ(requests.iv[id], requests.device[id], id, recv, d_arrayNext, d_arrayCurr, ic, jc, kc);
     break;
   }
   default:
     assert(false);
   }
 }
-
-
-// void Equation::calculateDir(ExchangeDir cdir) {
-//   switch (cdir) {
-//   case plus_x:
-//   case minus_x: {
-//     uint i = (cdir == plus_x) ? ic - 1 : 0;
-//     for (uint j = 1; j < jc - 1; ++j) {
-//       for (uint k = 1; k < kc - 1; ++k)
-//         calculateIndex(i, j, k);
-//     }
-//     break;
-//   }
-//   case plus_y:
-//   case minus_y: {
-//     uint j = (cdir == plus_y) ? jc - 1 : 0;
-//     for (uint i = 1; i < ic - 1; ++i) {
-//       for (uint k = 1; k < kc - 1; ++k)
-//         calculateIndex(i, j, k);
-//     }
-//     break;
-//   }
-//   case plus_z:
-//   case minus_z: {
-//     uint k = (cdir == plus_z) ? kc - 1 : 0;
-//     for (uint i = 1; i < ic - 1; ++i) {
-//       for (uint j = 1; j < jc - 1; ++j)
-//         calculateIndex(i, j, k);
-//     }
-//     break;
-//   }
-//   case period_plus_x:
-//   case period_minus_x:
-//   case period_plus_z:
-//   case period_minus_z:
-//     break;
-//   default:
-//     assert(false);
-//   }
-// }
 
 void Equation::inRange(int i, int a, int b) 
 { 

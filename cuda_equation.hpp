@@ -40,11 +40,12 @@ struct ProcessorNode {
     }
     void cpu_to_gpu()
     {
+      std::cout << "cpu0";
       for (int i = 0; i < size(); ++i)
         device[i] = host[i];
+      std::cout << "cpu1";
     }
 
-    //Requests() { buffs.reserve(10); }
   };
 };
 
@@ -60,6 +61,8 @@ public:
   double hx, hy, hz;
 
   uint ht; // delta t
+  int K;
+  float T;
 
   dvector d_arrayPrev, d_arrayCurr, d_arrayNext;
 
@@ -78,23 +81,12 @@ public:
 
   void copy(ProcessorNode::Requests &requests, uint id, bool recv);
 
-  // void edgeX(ProcessorNode::Requests &requests, uint id, bool recv);
-  // void edgeY(ProcessorNode::Requests &requests, uint id, bool recv);
-  // void edgeZ(ProcessorNode::Requests &requests, uint id, bool recv);
   ProcessorNode::Requests recv_requests;
   ProcessorNode::Requests send_requests;
 
   void calculateIndex(uint i, uint j, uint k);
   void calculateDir(ExchangeDir cdir);
 
-  // uint index(uint i, uint j, uint k) const;
-
-  // double x(uint i) const;
-  // double y(uint j) const;
-  // double z(uint k) const;
-
-  // void initPrev();
-  // void initCurr();
 };
 
 extern ProcessorNode node;

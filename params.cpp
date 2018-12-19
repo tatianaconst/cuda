@@ -1,9 +1,9 @@
 #include "params.hpp"
-float T = 0.01;
-float Lx = M_PI;
+// float T = 0.01;
+double Lx = M_PI;
 double Ly = M_PI;
 double Lz = M_PI;
-int K = 20;
+// int K = 20;
 
 
 PhysSize getPhysGrid(uint i) {
@@ -26,6 +26,8 @@ PhysSize getPhysGrid(uint i) {
     return PhysSize(8, 4, 8);
   case 512:
     return PhysSize(8, 8, 8);
+  default:
+    return PhysSize(1, 1, 1);
   }
 }
 
