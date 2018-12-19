@@ -90,9 +90,17 @@ void Equation::run() {
         MPI_Waitall(recv_requests.v.size(), recv_requests.v.data(),
                     MPI_STATUSES_IGNORE);
 
+        double t_host_device_start = MPI_Wtime();
         recv_requests.cpu_to_gpu();
+        double t_host_device_finish = MPI_Wtime();
+        r.t_host_device += t_hos_device_finish - t_host_device_start;
+
+
+        t_calculation_start = MPI_Wtime();
         for (uint i = 0; i < recv_requests.size(); ++i)
             copy(recv_requests, i, true);
+        t_calculation_finish = MPI_Wtime();
+        r.t_calculation += t_calculation_finish - t_calculation_start;
 
 
 
@@ -104,6 +112,8 @@ void Equation::run() {
         
 
         if (curr_step != K) {
+
+        	
             for (int i = 0; i < send_requests.size(); ++i) {
                 copy(send_requests, i, false);
 
