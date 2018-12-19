@@ -35,14 +35,16 @@ struct ProcessorNode {
     void append(ExchangeDir dir, uint sz);
     void gpu_to_cpu()
     {
-      for (int i = 0; i < size(); ++i)
-        host[i] = device[i];
+      for (int i = 0; i < size(); ++i){
+        //host[i] = device[i];
+      }
     }
     void cpu_to_gpu()
     {
       std::cout << "cpu0";
-      for (int i = 0; i < size(); ++i)
-        device[i] = host[i];
+      for (int i = 0; i < size(); ++i){
+        //device[i] = host[i];
+      }
       std::cout << "cpu1";
     }
 
