@@ -19,7 +19,7 @@ struct PhysSize {
   PhysSize(uint x0 = 0, uint y0 = 0, uint z0 = 0) : x(x0), y(y0), z(z0) {}
 };
 
-typedef std::vector<float> rvector;
+typedef std::vector<double> rvector;
 
 PhysSize getPhysGrid(uint i);
 

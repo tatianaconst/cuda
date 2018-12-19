@@ -2,6 +2,9 @@
 #include "params.hpp"
 #include "cuda_equation.hpp"
 
+#include <thrust/iterator/counting_iterator.h>
+#include <thrust/transform_reduce.h>
+#include <thrust/functional.h>
 
 
 __constant__ static long ic;
@@ -12,10 +15,10 @@ __constant__ static int i_0;
 __constant__ static int j_0;
 __constant__ static int k_0;
 
-__constant__ static float hx;
-__constant__ static float hy;
-__constant__ static float hz;
-__constant__ static float ht;
+__constant__ static double hx;
+__constant__ static double hy;
+__constant__ static double hz;
+__constant__ static double ht;
 
 __constant__ static long incsize;
 
@@ -25,7 +28,7 @@ void cuda_init(dvector &d_arrayPrev,
 			   dvector &d_arrayNext,
 			   long _incsize, long _ic, long _jc, long _kc,
 			   int _i_0, int _j_0, int _k_0,
-			   float _hx, float _hy, float _hz, float _ht)
+               double _hx, double _hy, double _hz, double _ht)
 {
 	cudaMemcpyToSymbol(incsize, &_incsize, sizeof(incsize), 0, cudaMemcpyHostToDevice);
 
@@ -41,7 +44,6 @@ void cuda_init(dvector &d_arrayPrev,
 	cudaMemcpyToSymbol(hy, &_hy, sizeof(hy), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(hz, &_hz, sizeof(hz), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(ht, &_ht, sizeof(ht), 0, cudaMemcpyHostToDevice);
-
 
 	try {
        
@@ -69,17 +71,14 @@ void cuda_copy_step(dvector &arrayPrev, dvector &arrayCurr, dvector &arrayNext)
 	arrayCurr = arrayNext;
 }
 
-
-
 __device__
-float phi(double x, double y, double z) 
+double phi(double x, double y, double z)
 {
   return sin(y) * cos(x - M_PI_2) * cos(z - M_PI_2);
 }
 
-
 __device__
-float u(double x, double y, double z, double t) 
+double u(double x, double y, double z, double t)
 {
   return phi(x, y, z) * cos(t);
 }
@@ -98,48 +97,47 @@ long index2(uint j, uint k)
 }
 
 __device__
-float x(uint i)
+double x(uint i)
 { 
   return (i_0 + i) * hx; 
 }
 
 __device__
-float y(uint j)
+double y(uint j)
 { 
   return (j_0 + j) * hy; 
 }
 
 __device__
-float z(uint k)
+double z(uint k)
 { 
   return (k_0 + k) * hz; 
 }
 
 __device__
-float deltaTime(uint n) 
+double deltaTime(uint n)
 { 
 	return n * ht; 
 }
 
 __device__
-float calculateIndex(uint i, uint j, uint k, 
-					float *arrayCurr,
-					float *arrayPrev) 
+double calculateIndex(uint i, uint j, uint k,
+                    double *arrayCurr,
+                    double *arrayPrev)
 {
-	return 0;
-  // long indexC = index(i, j, k);
+  long indexC = index(i, j, k);
 
-  // return 2 * arrayCurr[indexC] - arrayPrev[indexC] +
-  //     ht * ht *
-  //         ((arrayCurr[index(i - 1, j, k)] - 2 * arrayCurr[indexC] +
-  //           arrayCurr[index(i + 1, j, k)]) /
-  //              hx / hx +
-  //          (arrayCurr[index(i, j - 1, k)] - 2 * arrayCurr[indexC] +
-  //           arrayCurr[index(i, j + 1, k)]) /
-  //              hy / hy +
-  //          (arrayCurr[index(i, j, k - 1)] - 2 * arrayCurr[indexC] +
-  //           arrayCurr[index(i, j, k + 1)]) /
-  //              hz / hz);
+  return 2 * arrayCurr[indexC] - arrayPrev[indexC] +
+      ht * ht *
+          ((arrayCurr[index(i - 1, j, k)] - 2 * arrayCurr[indexC] +
+            arrayCurr[index(i + 1, j, k)]) /
+               hx / hx +
+           (arrayCurr[index(i, j - 1, k)] - 2 * arrayCurr[indexC] +
+            arrayCurr[index(i, j + 1, k)]) /
+               hy / hy +
+           (arrayCurr[index(i, j, k - 1)] - 2 * arrayCurr[indexC] +
+            arrayCurr[index(i, j, k + 1)]) /
+               hz / hz);
 }
 
 
@@ -165,8 +163,6 @@ struct j_k
 	j_k (long offset)
 	{
 		j = offset / (kc + 2);
-		// i = ij / (jc + 2);
-		// j = ij % (jc + 2);
 		k = offset % (kc + 2);
 	}
 };
@@ -179,8 +175,6 @@ struct i_j
 	i_j (long offset)
 	{
 		i = offset / (jc + 2);
-		// i = ij / (jc + 2);
-		// j = ij % (jc + 2);
 		j = offset % (jc + 2);
 	}
 };
@@ -193,8 +187,6 @@ struct i_k
 	i_k (long offset)
 	{
 		i = offset / (kc + 2);
-		// i = ij / (jc + 2);
-		// j = ij % (jc + 2);
 		k = offset % (kc + 2);
 	}
 };
@@ -202,14 +194,14 @@ struct i_k
 struct residual_functor
 {
 	uint curr_step;
-	float *arrayNext;
+    double *arrayNext;
 
-	residual_functor(uint step, float *array)
+    residual_functor(uint step, double *array)
 	:curr_step(step), arrayNext(array)
 	{}
 
 	__device__
-	float operator()(long offset)
+    double operator()(long offset)
 	{
 		i_j_k index(offset);
 		if (index.i == 0 || index.i == ic + 1 ||
@@ -217,25 +209,21 @@ struct residual_functor
 			index.k == 0 || index.k == kc + 1)
 			return 0.0;
 
-		float aSol = u(x(index.i), y(index.j), z(index.k), 
+        double aSol = u(x(index.i - 1), y(index.j - 1), z(index.k - 1),
 					   deltaTime(curr_step));
-		float residual = aSol - arrayNext[offset];
+        double residual = aSol - arrayNext[offset];
 		return std::abs(residual);		
 	}
 };
 
 __host__
-float cuda_residual(uint curr_step, dvector &arrayNext)
+double cuda_residual(uint curr_step, dvector &arrayNext, long size)
 {
-	dvector resVec(arrayNext.size());
-	thrust::counting_iterator<int> it(0);
-	thrust::transform(it, it + resVec.size(), resVec.begin(),
-					  residual_functor(curr_step, arrayNext.data().get()));
-	return thrust::reduce(resVec.begin(), resVec.end()) / resVec.size();
-	// return thrust::inclusive_scan(arrayNext.begin(), arrayNext.end(),
-	// 							  float(0.0),
-	// 					   		  residual_functor(curr_step)
-	// 					   		 );
+    dvector resVec(arrayNext.size());
+    thrust::counting_iterator<int> it(0);
+    thrust::transform(it, it + resVec.size(), resVec.begin(),
+                      residual_functor(curr_step, arrayNext.data().get()));
+    return thrust::reduce(resVec.begin(), resVec.end()) / size;
 }
 
 
@@ -243,10 +231,10 @@ float cuda_residual(uint curr_step, dvector &arrayNext)
 struct initPrev_functor
 {
 	__device__
-	float operator()(long offset) 
+    double operator()(long offset)
 	{
 		i_j_k index(offset);
-		return phi(x(index.i), y(index.j), z(index.k));
+        return phi(x(index.i - 1), y(index.j - 1), z(index.k - 1));
 	}
 };
 
@@ -261,75 +249,85 @@ void cuda_initPrev(dvector &arrayPrev)
 
 struct initCurr_functor
 {
-	float *arrayPrev;
+    double *arrayPrev;
 
 	__host__
-	initCurr_functor(float *array)
+    initCurr_functor(double *array)
 	:arrayPrev(array)
 	{}
 
 	__device__
-	float operator()(long offset)
+    double operator()(long offset)
 	{
 		i_j_k index(offset);
 		return arrayPrev[offset] + ht * ht / 2 * 
-			   (-phi(x(index.i), y(index.j), z(index.k)));
+               (-phi(x(index.i - 1), y(index.j - 1), z(index.k - 1)));
 	}
 };
 
 __host__
 void cuda_initCurr(dvector &arrayPrev, dvector &arrayCurr)
 {
-	thrust::counting_iterator<int> it;
+    thrust::counting_iterator<int> it(0);
 	thrust::transform(it, it + arrayCurr.size(), arrayCurr.begin(),
 					  initCurr_functor(arrayPrev.data().get()));
 }
 
 struct calculateIndex_functor
 {
-	float *arrayCurr;
-	float *arrayPrev;
-	float *arrayNext;
+    double *arrayCurr;
+    double *arrayPrev;
+    double *arrayNext;
 
 	__host__
-	calculateIndex_functor(float *array, float *arrayP, float *arrayN)
+    calculateIndex_functor(double *array, double *arrayP, double *arrayN)
 	:arrayCurr(array), arrayPrev(arrayP), arrayNext(arrayN)
 	{}
 
 	__device__
-	float operator()(long offset)
+    double operator()(long offset)
 	{
-		 i_j_k idx(offset);
-		// if (idx.i > 1 && idx.i < ic - 2 && 
-		// 	idx.j > 1 && idx.j < jc - 2 && 
-		// 	idx.k > 1 && idx.k < kc - 2)
+		i_j_k idx(offset);
+		if (idx.i > 1 && idx.i < ic - 2 && 
+			idx.j > 1 && idx.j < jc - 2 && 
+			idx.k > 1 && idx.k < kc - 2)
 			return calculateIndex(idx.i, idx.j, idx.k, arrayCurr, arrayPrev);
-		// else
-		// 	return arrayNext[offset];
+		else
+			return arrayNext[offset];
 	}
 };
 
+__device__
+bool is_border(i_j_k idx)
+{
+    if (idx.i == 0 || idx.i == ic - 1 ||
+            idx.j == 0 || idx.j == jc - 1 ||
+            idx.k == 0 || idx.k == kc - 1)
+        return false;
+    return (idx.i == 1 || idx.i == ic - 2 ||
+            idx.j == 1 || idx.j == jc - 2 ||
+            idx.k == 1 || idx.k == kc - 2);
+}
+
 struct calculateIndexDir_functor
 {
-	float *arrayCurr;
-	float *arrayPrev;
-	float *arrayNext;
+    double *arrayCurr;
+    double *arrayPrev;
+    double *arrayNext;
 
 
-	__host__
-	calculateIndexDir_functor(float *array, float *arrayP, float *arrayN)
+    __host__
+    calculateIndexDir_functor(double *array, double *arrayP, double *arrayN)
 	:arrayCurr(array), arrayPrev(arrayP), arrayNext(arrayN)
 	{}
 
 	__device__
-	float operator()(long offset)
+    double operator()(long offset)
 	{
 		i_j_k idx(offset);
-		if (idx.i == 1 || idx.i == ic - 2 || 
-			idx.j == 1 || idx.j == jc - 2 || 
-			idx.k == 1 || idx.k == kc - 2)
+        if (is_border(idx))
 			return calculateIndex(idx.i, idx.j, idx.k, arrayCurr, arrayPrev);
-		else return arrayNext[offset];
+        return arrayNext[offset];
 	}
 };
 
@@ -338,34 +336,36 @@ __host__
 void cuda_calculateIndex(dvector &d_arrayNext, dvector &d_arrayCurr, 
 						 dvector &d_arrayPrev)
 {
-	thrust::counting_iterator<int> it;
+    thrust::counting_iterator<int> it(0);
 	thrust::transform(it, it + d_arrayNext.size(), d_arrayNext.begin(),
 					  calculateIndex_functor(d_arrayCurr.data().get(),
 					  						 d_arrayPrev.data().get(),
 					  						 d_arrayNext.data().get()));
 }
 
-void cuda_calculateDir(dvector &d_arrayNext, dvector &d_arrayCurr, 
-						 dvector &d_arrayPrev)
+void cuda_calculateDir(dvector &d_arrayNext,
+                       dvector &d_arrayCurr,
+                       dvector &d_arrayPrev)
 {
-	thrust::counting_iterator<int> it;
+    thrust::counting_iterator<int> it(0);
 	thrust::transform(it, it + d_arrayNext.size(), d_arrayNext.begin(),
 					  calculateIndexDir_functor(d_arrayCurr.data().get(),
-					  						 d_arrayPrev.data().get(), d_arrayNext.data().get()));
+                                                d_arrayPrev.data().get(),
+                                                d_arrayNext.data().get()));
 }
 
 struct edgeX_send_functor
 {
 	int fix_i;
-	float *arrayCurr;
+    double *arrayCurr;
 
 	__host__
-	edgeX_send_functor(int _i, float *array)
+    edgeX_send_functor(int _i, double *array)
 	:fix_i(_i), arrayCurr(array)
 	{}
 
 	__device__
-	float operator()(long offset)
+    double operator()(long offset)
 	{
 		j_k idx(offset);
 		return arrayCurr[index(fix_i, idx.j, idx.k)];
@@ -376,15 +376,15 @@ struct edgeX_send_functor
 struct edgeY_send_functor
 {
 	int fix_j;
-	float *arrayCurr;
+    double *arrayCurr;
 
 	__host__
-	edgeY_send_functor(int j, float *array)
+    edgeY_send_functor(int j, double *array)
 	:fix_j(j), arrayCurr(array)
 	{}
 
 	__device__
-	float operator()(long offset)
+    double operator()(long offset)
 	{
 		i_k idx(offset);
 		return arrayCurr[index(idx.i, fix_j, idx.k)];
@@ -395,15 +395,15 @@ struct edgeY_send_functor
 struct edgeZ_send_functor
 {
 	int fix_k;
-	float *arrayCurr;
+    double *arrayCurr;
 
 	__host__
-	edgeZ_send_functor(int k, float *array)
+    edgeZ_send_functor(int k, double *array)
 	:fix_k(k), arrayCurr(array)
 	{}
 
 	__device__
-	float operator()(long offset)
+    double operator()(long offset)
 	{
 		i_j idx(offset);
 		return arrayCurr[index(idx.i, idx.j, fix_k)];
@@ -414,16 +414,16 @@ struct edgeZ_send_functor
 struct edgeX_recv_functor
 {
 	int fix_i;
-	float *v;
-	float *arrayCurr;
+    double *v;
+    double *arrayCurr;
 
 	__host__
-	edgeX_recv_functor(int _i, float *array, float *arrayC)
+    edgeX_recv_functor(int _i, double *array, double *arrayC)
 	:fix_i(_i), v(array), arrayCurr(arrayC)
 	{}
 
 	__device__
-	float operator()(long offset)
+    double operator()(long offset)
 	{
 		i_j_k idx(offset);
 		if (idx.i == fix_i)
@@ -436,16 +436,16 @@ struct edgeX_recv_functor
 struct edgeY_recv_functor
 {
 	int fix_j;
-	float *v;
-	float *def;
+    double *v;
+    double *def;
 
 	__host__
-	edgeY_recv_functor(int _j, float *array, float *d)
+    edgeY_recv_functor(int _j, double *array, double *d)
 	:fix_j(_j), v(array), def(d)
 	{}
 
 	__device__
-	float operator()(long offset)
+    double operator()(long offset)
 	{
 		i_j_k idx(offset);
 		if (idx.j == fix_j)
@@ -458,16 +458,16 @@ struct edgeY_recv_functor
 struct edgeZ_recv_functor
 {
 	int fix_k;
-	float *v;
-	float *def;
+    double *v;
+    double *def;
 
 	__host__
-	edgeZ_recv_functor(int _k, float *array, float *d)
+    edgeZ_recv_functor(int _k, double *array, double *d)
 	:fix_k(_k), v(array), def(d)
 	{}
 
 	__device__
-	float operator()(long offset)
+    double operator()(long offset)
 	{
 		i_j_k idx(offset);
 		if (idx.k == fix_k)
@@ -481,8 +481,6 @@ struct edgeZ_recv_functor
 void cuda_edgeX(ExchangeDir cdir, dvector &v, uint id, bool recv, 
 				dvector &d_arrayNext, dvector &d_arrayCurr, long ic, long jc, long kc) 
 {
-  // ExchangeDir cdir = requests.iv[id];
-  // dvector &v = requests.device[id];
   int i;
   switch (cdir) {
   case plus_x: {
@@ -501,26 +499,23 @@ void cuda_edgeX(ExchangeDir cdir, dvector &v, uint id, bool recv,
     i = recv ? 1 : 2;
     break;
   }
+	default: std::cerr << "BAD CASE" << std::endl; exit(1);
   }
 
-  	thrust::counting_iterator<int> it;
+    thrust::counting_iterator<int> it(0);
 
 	if (!recv) {
 		thrust::transform(it, it + v.size(), v.begin(),
 					  edgeX_send_functor(i, d_arrayCurr.data().get()));
-	    // v[offset++] = d_arrayCurr[index(i, j, k)];
 	}
 	else {
 		thrust::transform(it, it + v.size(), v.begin(),
 					  edgeX_recv_functor(i, d_arrayCurr.data().get(), d_arrayCurr.data().get()));
-		//d_arrayCurr[index(i, j, k)] = v[offset++];
 	}
 }
 
 void cuda_edgeY(ExchangeDir cdir, dvector &v, uint id, bool recv, 
 				dvector &d_arrayNext, dvector &d_arrayCurr, long jc) {
-  // ExchangeDir cdir = requests.iv[id];
-  // thrust::host_vector<float> &v = requests.host[id];
   int j;
   switch (cdir) {
   case plus_y: {
@@ -531,26 +526,23 @@ void cuda_edgeY(ExchangeDir cdir, dvector &v, uint id, bool recv,
     j = recv ? 0 : 1;
     break;
   }
+  default: std::cerr << "BAD CASE" << std::endl; exit(1);
   }
 
-  thrust::counting_iterator<int> it;
+  thrust::counting_iterator<int> it(0);
 
 	if (!recv) {
 		thrust::transform(it, it + v.size(), v.begin(),
 					  edgeY_send_functor(j, d_arrayCurr.data().get()));
-	    // v[offset++] = d_arrayCurr[index(i, j, k)];
 	}
 	else {
 		thrust::transform(it, it + v.size(), v.begin(),
 					  edgeY_recv_functor(j, d_arrayCurr.data().get(), d_arrayCurr.data().get()));
-		//d_arrayCurr[index(i, j, k)] = v[offset++];
 	}
 }
 
 void cuda_edgeZ(ExchangeDir cdir, dvector &v, uint id, bool recv, 
 				dvector &d_arrayNext, dvector &d_arrayCurr, long ic, long jc, long kc) {
-  // ExchangeDir cdir = requests.iv[id];
-  // std::vector<float> &v = requests.host[id];
   int k;
   switch (cdir) {
   case plus_z: {
@@ -569,18 +561,17 @@ void cuda_edgeZ(ExchangeDir cdir, dvector &v, uint id, bool recv,
     k = recv ? 1 : 2;
     break;
   }
+  default: std::cerr << "BAD CASE" << std::endl; exit(1);
   }
-    thrust::counting_iterator<int> it;
+    thrust::counting_iterator<int> it(0);
 
 	if (!recv) {
 		thrust::transform(it, it + v.size(), v.begin(),
 					  edgeZ_send_functor(k, d_arrayCurr.data().get()));
-	    // v[offset++] = d_arrayCurr[index(i, j, k)];
 	}
 	else {
 		thrust::transform(it, it + v.size(), v.begin(),
 					  edgeZ_recv_functor(k, d_arrayCurr.data().get(), d_arrayCurr.data().get()));
-		//d_arrayCurr[index(i, j, k)] = v[offset++];
 	}
 }
 

@@ -4,6 +4,28 @@
 #include "cuda_param.hpp"
 #include <vector>
 
+
+struct Reporter
+{
+  Reporter()
+  :cpu(0), N(0), t_host_device(0), t_MPI(0),
+   t_calculation(0), t_init(0), t_free(0),
+   t_offset(0), t_full(0)
+  {}
+
+  int cpu;
+  int N;
+  double t_host_device;
+  double t_MPI;
+  double t_calculation;
+  double t_init;
+  double t_free;
+  double t_offset;
+  double t_full;
+};
+
+extern Reporter r;
+
 struct ProcessorNode {
   uint rank;
   uint size;
@@ -26,7 +48,6 @@ struct ProcessorNode {
     ExchangeDir dir;
 
     std::vector<MPI_Request> v;
-    //std::vector<rvector> buffs;
     std::vector<hvector> host;
     std::vector<dvector> device;
     std::vector<ExchangeDir> iv;
@@ -62,15 +83,9 @@ public:
 
   uint ht; // delta t
   int K;
-  float T;
+  double T;
 
   dvector d_arrayPrev, d_arrayCurr, d_arrayNext;
-
-  // rvector 
-
-  // double maxResidual;
-
-  // double deltaTime(uint n) const { return n * ht; }
 
   Equation(uint n);
 
