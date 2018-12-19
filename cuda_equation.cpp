@@ -41,6 +41,12 @@ void Equation::init() {
             i0, j0, k0,
             hx, hy, hz, ht);
 
+
+  recv_requests.host.reserve(10);
+  recv_requests.device.reserve(10);
+  send_requests.host.reserve(10);
+  send_requests.device.reserve(10);
+
   for (int i = 0; i < 10; ++i) {
     ExchangeDir cdir = static_cast<ExchangeDir>(i);
     if (node.is(cdir)) {
@@ -67,7 +73,7 @@ void Equation::run() {
   uint curr_step = 2;
 
   float totalSumRes = 0;
-  
+  std::cout << "3";
   for (; curr_step < K + 1; ++curr_step) {
     for (uint i = 0; i < recv_requests.size(); ++i) {
       print(node.rank, "i = %d\n", i);
@@ -77,37 +83,39 @@ void Equation::run() {
                   pairDir(recv_requests.iv[i]), MPI_COMM_WORLD,
                   &recv_requests.v[i]);
     }
+    std::cout << "4";
 
     cuda_calculateIndex(d_arrayNext, d_arrayCurr, d_arrayPrev);
     MPI_Waitall(recv_requests.v.size(), recv_requests.v.data(),
                 MPI_STATUSES_IGNORE);
-
+    std::cout << "5";
     recv_requests.cpu_to_gpu();
     for (uint i = 0; i < recv_requests.size(); ++i)
       copy(recv_requests, i, true);
-
-    cuda_calculateDir(d_arrayNext, d_arrayCurr, d_arrayPrev);
-    
+    std::cout << "6";
+    //cuda_calculateDir(d_arrayNext, d_arrayCurr, d_arrayPrev);
+    std::cout << "7";
     if (curr_step != K) {
       for (int i = 0; i < send_requests.size(); ++i) {
       copy(send_requests, i, false);
-
+      std::cout << "8";
       MPI_Isend(send_requests.host[i].data(), send_requests.host[i].size(),
                 MPI_FLOAT, node.neighbor(send_requests.iv[i]),
                 send_requests.iv[i], MPI_COMM_WORLD, &send_requests.v[i]);
       }
-
+      std::cout << "9";
       send_requests.gpu_to_cpu();
+      std::cout << "0";
       for (int i = 0; i < send_requests.size(); ++i)
         copy(send_requests, i, false);
-
-
+      std::cout << "a";
     }
-
+    std::cout << "b";
     totalSumRes += cuda_residual(curr_step, d_arrayNext);
-
+    std::cout << "c";
     if (curr_step < K)
       cuda_copy_step(d_arrayPrev, d_arrayCurr, d_arrayNext);
+    std::cout << "d";
   }
   totalSumRes = totalSumRes / K;
   float sharedResidual = 0;

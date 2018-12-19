@@ -30,7 +30,7 @@ void cuda_append(std::vector<hvector> &host, std::vector<dvector> &device, uint 
 
 void cuda_copy_step(dvector &arrayPrev, dvector &arrayCurr, dvector &arrayNext);
 
-float cuda_residual(uint curr_step, dvector arrayNext);
+float cuda_residual(uint curr_step, dvector &arrayNext);
 
 void cuda_initPrev(dvector &arrayPrev);
 

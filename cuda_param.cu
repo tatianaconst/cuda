@@ -126,19 +126,20 @@ float calculateIndex(uint i, uint j, uint k,
 					float *arrayCurr,
 					float *arrayPrev) 
 {
-  long indexC = index(i, j, k);
+	return 0;
+  // long indexC = index(i, j, k);
 
-  return 2 * arrayCurr[indexC] - arrayPrev[indexC] +
-      ht * ht *
-          ((arrayCurr[index(i - 1, j, k)] - 2 * arrayCurr[indexC] +
-            arrayCurr[index(i + 1, j, k)]) /
-               hx / hx +
-           (arrayCurr[index(i, j - 1, k)] - 2 * arrayCurr[indexC] +
-            arrayCurr[index(i, j + 1, k)]) /
-               hy / hy +
-           (arrayCurr[index(i, j, k - 1)] - 2 * arrayCurr[indexC] +
-            arrayCurr[index(i, j, k + 1)]) /
-               hz / hz);
+  // return 2 * arrayCurr[indexC] - arrayPrev[indexC] +
+  //     ht * ht *
+  //         ((arrayCurr[index(i - 1, j, k)] - 2 * arrayCurr[indexC] +
+  //           arrayCurr[index(i + 1, j, k)]) /
+  //              hx / hx +
+  //          (arrayCurr[index(i, j - 1, k)] - 2 * arrayCurr[indexC] +
+  //           arrayCurr[index(i, j + 1, k)]) /
+  //              hy / hy +
+  //          (arrayCurr[index(i, j, k - 1)] - 2 * arrayCurr[indexC] +
+  //           arrayCurr[index(i, j, k + 1)]) /
+  //              hz / hz);
 }
 
 
@@ -224,7 +225,7 @@ struct residual_functor
 };
 
 __host__
-float cuda_residual(uint curr_step, dvector arrayNext)
+float cuda_residual(uint curr_step, dvector &arrayNext)
 {
 	dvector resVec(arrayNext.size());
 	thrust::counting_iterator<int> it(0);
@@ -298,13 +299,13 @@ struct calculateIndex_functor
 	__device__
 	float operator()(long offset)
 	{
-		i_j_k idx(offset);
-		if (idx.i > 1 && idx.i < ic - 2 && 
-			idx.j > 1 && idx.j < jc - 2 && 
-			idx.k > 1 && idx.k < kc - 2)
+		 i_j_k idx(offset);
+		// if (idx.i > 1 && idx.i < ic - 2 && 
+		// 	idx.j > 1 && idx.j < jc - 2 && 
+		// 	idx.k > 1 && idx.k < kc - 2)
 			return calculateIndex(idx.i, idx.j, idx.k, arrayCurr, arrayPrev);
-		else
-			return arrayNext[offset];
+		// else
+		// 	return arrayNext[offset];
 	}
 };
 
