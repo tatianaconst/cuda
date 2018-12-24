@@ -1,11 +1,11 @@
 #ifndef PLAIN_HPP
 #define PLAIN_HPP
 
-#include "params.hpp"
 #include <vector>
+#include "params.hpp"
 
 class Equation {
-public:
+ public:
   long N;
   int curr_step;
   uint i0, j0, k0;
@@ -15,7 +15,7 @@ public:
 
   double hx, hy, hz;
 
-  uint ht; // delta t
+  uint ht;  // delta t
 
   rvector arrayPrev, arrayCurr, arrayNext;
 
@@ -30,11 +30,11 @@ public:
 
   void inRange(int i, int a, int b);
 
-  void copy(ProcessorNode::Requests &requests, uint id, bool recv);
+  void copy(ProcessorNode::Requests& requests, uint id, bool recv);
 
-  void edgeX(ProcessorNode::Requests &requests, uint id, bool recv);
-  void edgeY(ProcessorNode::Requests &requests, uint id, bool recv);
-  void edgeZ(ProcessorNode::Requests &requests, uint id, bool recv);
+  void edgeX(ProcessorNode::Requests& requests, uint id, bool recv);
+  void edgeY(ProcessorNode::Requests& requests, uint id, bool recv);
+  void edgeZ(ProcessorNode::Requests& requests, uint id, bool recv);
   ProcessorNode::Requests recv_requests;
   ProcessorNode::Requests send_requests;
 
@@ -51,4 +51,4 @@ public:
   void initCurr();
 };
 
-#endif 
+#endif

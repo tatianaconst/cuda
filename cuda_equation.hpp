@@ -1,17 +1,36 @@
 #ifndef EQUATION_HPP
 #define EQUATION_HPP
 
-#include "cuda_param.hpp"
 #include <vector>
+#include "cuda_param.hpp"
+#include <thrust/device_ptr.h>
 
-
-struct Reporter
-{
+struct Reporter {
   Reporter()
-  :cpu(0), N(0), t_host_device(0), t_MPI(0),
-   t_calculation(0), t_init(0), t_free(0),
-   t_offset(0), t_full(0)
-  {}
+      : cpu(0),
+        N(0),
+        t_host_device(0),
+        t_MPI(0),
+        t_calculation(0),
+        t_init(0),
+        t_free(0),
+        t_offset(0),
+        t_full(0),
+        t_send(0),
+        timer_send(0) {}
+  void clear() {
+    cpu = 0;
+    N = 0;
+    t_host_device = 0;
+    t_MPI = 0;
+    t_calculation = 0;
+    t_init = 0;
+    t_free = 0;
+    t_offset = 0;
+    t_full = 0;
+    t_send = 0;
+    timer_send = 0;
+  }
 
   int cpu;
   int N;
@@ -22,6 +41,9 @@ struct Reporter
   double t_free;
   double t_offset;
   double t_full;
+
+  double t_send;
+  double timer_send;
 };
 
 extern Reporter r;
@@ -29,6 +51,8 @@ extern Reporter r;
 struct ProcessorNode {
   uint rank;
   uint size;
+
+  int gpus;
 
   PhysSize PhysSize;
 
@@ -44,7 +68,6 @@ struct ProcessorNode {
   int toRank(uint i, uint j, uint k) const;
 
   struct Requests {
-
     ExchangeDir dir;
 
     std::vector<MPI_Request> v;
@@ -54,24 +77,21 @@ struct ProcessorNode {
 
     uint size() const { return v.size(); }
     void append(ExchangeDir dir, uint sz);
-    void gpu_to_cpu()
-    {
-      for (int i = 0; i < size(); ++i){
+    void gpu_to_cpu() {
+      for (int i = 0; i < size(); ++i) {
         host[i] = device[i];
       }
     }
-    void cpu_to_gpu()
-    {
-      for (int i = 0; i < size(); ++i){
+    void cpu_to_gpu() {
+      for (int i = 0; i < size(); ++i) {
         device[i] = host[i];
       }
     }
-
   };
 };
 
 class Equation {
-public:
+ public:
   long N;
   int curr_step;
   uint i0, j0, k0;
@@ -81,7 +101,7 @@ public:
 
   double hx, hy, hz;
 
-  uint ht; // delta t
+  uint ht;  // delta t
   int K;
   double T;
 
@@ -94,16 +114,15 @@ public:
 
   void inRange(int i, int a, int b);
 
-  void copy(ProcessorNode::Requests &requests, uint id, bool recv);
+  void copy(ProcessorNode::Requests& requests, uint id, bool recv);
 
   ProcessorNode::Requests recv_requests;
   ProcessorNode::Requests send_requests;
 
   void calculateIndex(uint i, uint j, uint k);
   void calculateDir(ExchangeDir cdir);
-
 };
 
 extern ProcessorNode node;
 
-#endif // Equation_HPP
+#endif  // Equation_HPP

@@ -1,5 +1,5 @@
-#include "equation.hpp"
 #include <string.h>
+#include "equation.hpp"
 
 ProcessorNode node;
 
@@ -54,24 +54,20 @@ void Equation::run() {
   printf("Np: %d, N: %d, R: %lf\n", node.size, N, sumResidual);
 }
 
-double Equation::x(uint i) const 
-{ 
-  return (i0 + i) * hx; 
+double Equation::x(uint i) const {
+  return (i0 + i) * hx;
 }
 
-double Equation::y(uint j) const 
-{ 
-  return (j0 + j) * hy; 
+double Equation::y(uint j) const {
+  return (j0 + j) * hy;
 }
 
-double Equation::z(uint k) const 
-{ 
-  return (k0 + k) * hz; 
+double Equation::z(uint k) const {
+  return (k0 + k) * hz;
 }
 
-void Equation::inRange(int i, int a, int b) 
-{ 
-  assert((i >= a) && (i < b)); 
+void Equation::inRange(int i, int a, int b) {
+  assert((i >= a) && (i < b));
 }
 
 void Equation::calculateIndex(uint i, uint j, uint k) {
@@ -102,8 +98,7 @@ uint Equation::index(uint i, uint j, uint k) const {
   return ((i + 1) * (jc + 2) + (j + 1)) * (kc + 2) + (k + 1);
 }
 
-void Equation::initPrev() 
-{
+void Equation::initPrev() {
   for (int i = 0; i < ic; ++i)
     for (uint j = 0; j < jc; ++j)
       for (uint k = 0; k < kc; ++k) {
@@ -112,8 +107,7 @@ void Equation::initPrev()
         arrayPrev[indexC] = phi(x(i), y(j), z(k));
       }
 }
-void Equation::initCurr() 
-{
+void Equation::initCurr() {
   for (int i = 0; i < ic; ++i)
     for (uint j = 0; j < jc; ++j)
       for (uint k = 0; k < kc; ++k) {
@@ -124,6 +118,5 @@ void Equation::initCurr()
       }
   curr_step = 2;
 }
-
 
 //

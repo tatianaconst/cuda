@@ -3,16 +3,15 @@
 
 #include <omp.h>
 
-#include <algorithm>
 #include <assert.h>
-#include <cmath>
 #include <mpi.h>
 #include <stdio.h>
+#include <algorithm>
+#include <cmath>
 #include <vector>
 
-void print(int rank, const char *str);
-void print(int rank, const char *str, int n);
-
+void print(int rank, const char* str);
+void print(int rank, const char* str, int n);
 
 struct PhysSize {
   uint x, y, z;
@@ -37,9 +36,9 @@ enum ExchangeDir {
 };
 
 // extern double T;  // = 0.01;
-extern double Lx; // = M_PI;
-extern double Ly; // = M_PI;
-extern double Lz; // = M_PI;
+extern double Lx;  // = M_PI;
+extern double Ly;  // = M_PI;
+extern double Lz;  // = M_PI;
 // extern int K;  // = 20;
 
 ExchangeDir pairDir(ExchangeDir cdir);
