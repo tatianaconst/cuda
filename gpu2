@@ -1,0 +1,7 @@
+. /polusfs/setenv/setup.SMPI
+#BSUB -n 2
+#BSUB -W 00:30
+#BSUB -gpu "num=2:j_exclusive=yes"
+#BSUB -o t3.%J.out
+#BSUB -e t3.%J.err
+OMP_NUM_THREADS=1 mpiexec ./t3

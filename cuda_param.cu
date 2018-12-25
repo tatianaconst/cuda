@@ -122,7 +122,7 @@ __device__ double calculateIndex(uint i,
                                  uint k,
                                  double* arrayCurr,
                                  double* arrayPrev) {
-  ++c;
+  atomicAdd(&c, long(1));
   long indexC = index(i, j, k);
 
   return 2 * arrayCurr[indexC] - arrayPrev[indexC] +
