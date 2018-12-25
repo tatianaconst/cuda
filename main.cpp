@@ -8,6 +8,7 @@ int main(int argc, char** argv) {
   double start, finish;
 
   for (uint N = 128; N <= 512; N = N * 2) {
+    double res;
     {     
       start = MPI_Wtime();
 
@@ -16,7 +17,7 @@ int main(int argc, char** argv) {
       r.N = N;
       Equation eq(N);  
       eq.init();
-      eq.run();
+      res = eq.run();
       t_free_start = MPI_Wtime();
     }
     t_free_finish = MPI_Wtime();
@@ -45,7 +46,8 @@ int main(int argc, char** argv) {
                  << "," << sum_init / r.cpu 
                  << "," << sum_free / r.cpu 
                  << "," << sum_full / r.cpu 
-                 << std::endl;
+                 << std::endl
+                 << " " << res << std::endl;
     }
   MPI_Finalize();
   return 0;

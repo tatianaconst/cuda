@@ -7,6 +7,7 @@
 #include <thrust/transform_reduce.h>
 #include <thrust/device_vector.h>
 
+__device__ long c;
 __constant__ static long ic;
 __constant__ static long jc;
 __constant__ static long kc;
@@ -60,6 +61,8 @@ void cuda_init(dvector& d_arrayPrev,
     std::cerr << "CAUGHT AN EXCEPTION" << std::endl;
   }
 }
+
+long cuda_counter() {return c;}
 
 void cuda_prev_to_next(dvector &arrayPrev, dvector &arrayNext)
 {
@@ -119,6 +122,7 @@ __device__ double calculateIndex(uint i,
                                  uint k,
                                  double* arrayCurr,
                                  double* arrayPrev) {
+  ++c;
   long indexC = index(i, j, k);
 
   return 2 * arrayCurr[indexC] - arrayPrev[indexC] +

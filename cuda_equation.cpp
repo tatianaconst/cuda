@@ -57,10 +57,10 @@ void Equation::init() {
     }
   }
   double t_init_finish = MPI_Wtime();
-  r.t_init = t_init_finish - t_init_start;
+  r.t_init += t_init_finish - t_init_start;
 }
 
-void Equation::run() {
+double Equation::run() {
 
 
   double t_calculation_start = MPI_Wtime();
@@ -170,6 +170,10 @@ void Equation::run() {
              MPI_COMM_WORLD);
   double t_MPI_finish = MPI_Wtime();
   r.t_MPI += t_MPI_finish - t_MPI_start;
+
+  std::cout << cuda_counter() << std::endl;
+
+  return sharedResidual / r.cpu;
 }
 
 void Equation::copy(ProcessorNode::Requests& requests, uint id, bool recv) {
@@ -224,7 +228,7 @@ void ProcessorNode::init() {
   y = rank / PhysSize.z % PhysSize.y;
   x = rank / PhysSize.z / PhysSize.y;
   double t_init_finish = MPI_Wtime();
-  r.t_init = t_init_finish - t_init_start;
+  r.t_init += t_init_finish - t_init_start;
 
 
   cudaGetDeviceCount(&gpus);

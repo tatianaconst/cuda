@@ -29,6 +29,8 @@ void cuda_append(std::vector<hvector>& host,
                  std::vector<dvector>& device,
                  uint sz);
 
+long cuda_counter();
+
 void cuda_prev_to_next(dvector &arrayPrev, dvector &arrayNext);
 
 void cuda_copy_step(dvector& arrayPrev, dvector& arrayCurr, dvector& arrayNext);

@@ -110,7 +110,7 @@ class Equation {
   Equation(uint n);
 
   void init();
-  void run();
+  double run();
 
   void inRange(int i, int a, int b);
 
